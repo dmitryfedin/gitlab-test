@@ -1,0 +1,107 @@
+########################
+# start gitlab in docker
+#######################
+sudo docker run --detach \
+  --hostname gitlab.example.com \
+  --publish 443:443 --publish 8075:80 --publish 10075:22 \
+  --name gitlab \
+  --restart always \
+  --volume $GITLAB_HOME/config:/etc/gitlab \
+  --volume $GITLAB_HOME/logs:/var/log/gitlab \
+  --volume $GITLAB_HOME/data:/var/opt/gitlab \
+  --shm-size 256m \
+  --memory-reservation=2048m \
+  --cpus=2 \
+  gitlab/gitlab-ee:latest
+
+# take pass for root
+sudo docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+
+#######################
+# install nginx
+#######################
+
+supo apt install -y nginx
+
+#######################
+# change config to 
+#######################
+
+# /etc/nginx/sites-available/default 
+# or make new file and ln to sites-enabled
+
+#server {
+#    listen       80;
+#    server_name  gitlab.example.com;
+#
+#    location / {
+#        proxy_set_header        Host $host;
+#        proxy_set_header        X-Real-IP $remote_addr;
+#        proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header        X-Forwarded-Proto $scheme;
+#
+#        proxy_pass                  http://localhost:8075;
+#        proxy_read_timeout     90;
+#    }
+#
+#    error_log   /var/log/nginx/git_example_com_error.log error;
+#    access_log  /var/log/nginx/git_example_com_access.log;
+#}
+
+sudo systemctl restart nginx.service
+
+#######################
+# install gitlab-runner
+#######################
+
+mkdir gitlab
+mkdir gitlab/config
+cd gitlab/config
+
+sudo docker run -it --rm --name gitlab-runner -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/config:/etc/gitlab-runner gitlab/gitlab-runner:alpine3.14-v14.10.0 register
+
+#######################
+# GITLAB-RUNNER CONFIG PROXY
+#######################
+ 
+# IF YOU BEHIND PROXY
+# GO TO config/config.toml
+# AND ADD
+# IN [[runners]]
+#	  pre_get_sources_script = "git config --global http.proxy 130.100.7.222:1082; git config --global https.proxy 130.100.7.222:1082"
+
+#######################
+# RUNNER CONFIG NETWORK
+#######################
+
+# IN [[runners.docker]
+# add 
+#	    network_mode="host"
+# 
+
+#######################
+# START RUNNER
+#######################
+
+sudo docker run -it --rm --name gitlab-runner -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/config:/etc/gitlab-runner gitlab/gitlab-runner:alpine3.14-v14.10.0 run
+
+# and now you can commit to gitlab server and pipe start
+
+######################
+# git clone
+#####################
+
+# I dont undrestand why don reseleve gitlab.example.com to clone
+
+# but
+# git clone  http://130.100.7.171:8075/root/tets.git
+# work well
+
+
+
+
+
+
+
+
+

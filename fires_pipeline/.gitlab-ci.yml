@@ -1,0 +1,9 @@
+---
+stages:
+  - test
+
+Local job:
+  stage: test
+  script:
+    - ls -la
+    - echo "hello wordl"
